@@ -222,10 +222,14 @@ class PointNetSetAbstraction(nn.Module):
             self.mlp_convs.append(nn.Conv2d(last_channel, out_channel, 1, bias = False))
             self.mlp_bns.append(nn.BatchNorm2d(out_channel))
             last_channel = out_channel
-        for out_channel in mlp2:
-            self.mlp2_convs.append(nn.Sequential(nn.Conv1d(last_channel, out_channel, 1, bias=False),
-                                                nn.BatchNorm1d(out_channel)))
-            last_channel = out_channel
+        # print('--------------------------------------')
+        # print(mlp2)
+        if mlp2 != None:
+            for out_channel in mlp2:
+                # print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+                self.mlp2_convs.append(nn.Sequential(nn.Conv1d(last_channel, out_channel, 1, bias=False),
+                                                    nn.BatchNorm1d(out_channel)))
+                last_channel = out_channel
         if group_all:
             self.queryandgroup = pointutils.GroupAll()
         else:

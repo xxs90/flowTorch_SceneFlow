@@ -1,0 +1,6 @@
+# ninja log v5
+1	23017	1670545256666450438	/home/xxslab/Documents/cs5330_project/flownet3d_pytorch/lib/build/temp.linux-x86_64-cpython-37/src/interpolate_gpu.o	d43eddfb9b89f3b0
+0	23029	1670545256678450746	/home/xxslab/Documents/cs5330_project/flownet3d_pytorch/lib/build/temp.linux-x86_64-cpython-37/src/ball_query_gpu.o	a05fda44ca35c5e6
+1	23237	1670545256882455960	/home/xxslab/Documents/cs5330_project/flownet3d_pytorch/lib/build/temp.linux-x86_64-cpython-37/src/group_points_gpu.o	6146857913b61361
+2	24422	1670545258070486329	/home/xxslab/Documents/cs5330_project/flownet3d_pytorch/lib/build/temp.linux-x86_64-cpython-37/src/sampling_gpu.o	80f4cab0ab42c769
+2	32010	1670545265646679991	/home/xxslab/Documents/cs5330_project/flownet3d_pytorch/lib/build/temp.linux-x86_64-cpython-37/src/pointnet2_api.o	b96948a8c6899f12

@@ -16,7 +16,9 @@ from model import FlowNet3D
 import numpy as np
 from torch.utils.data import DataLoader
 # from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
+import time
 
 
 class IOStream:
@@ -100,7 +102,7 @@ def test_one_epoch(args, net, test_loader):
     return total_loss * 1.0 / num_examples, total_epe * 1.0 / num_examples, total_acc3d * 1.0 / num_examples, total_acc3d_2 * 1.0 / num_examples
 
 
-def train_one_epoch(args, net, train_loader, opt):
+def train_one_epoch(args, net, train_loader, opt, boardio):
     net.train()
     num_examples = 0
     total_loss = 0
@@ -123,9 +125,13 @@ def train_one_epoch(args, net, train_loader, opt):
         opt.step()
         total_loss += loss.item() * batch_size
 
-        # if (i+1) % 100 == 0:
-        #     print("batch: %d, mean loss: %f" % (i, total_loss / 100 / batch_size))
-        #     total_loss = 0
+        # mean_loss = 0
+        if (i+1) % 100 == 0:
+            mean_loss= total_loss / 100 / batch_size
+            print("batch: %d, mean loss: %f" % (i, mean_loss))
+            total_loss = 0
+            boardio.add_scalar("mean loss/iter", mean_loss, i)
+
     return total_loss * 1.0 / num_examples
 
 
@@ -138,6 +144,8 @@ def test(args, net, test_loader, boardio, textio):
 
 
 def train(args, net, train_loader, test_loader, boardio, textio):
+    timestr = time.strftime("%m%d_%H%M%S")
+    os.makedirs('models/%s' % timestr)
     if args.use_sgd:
         print("Use SGD")
         opt = optim.SGD(net.parameters(), lr=args.lr * 100, momentum=args.momentum, weight_decay=1e-4)
@@ -150,7 +158,7 @@ def train(args, net, train_loader, test_loader, boardio, textio):
     best_test_loss = np.inf
     for epoch in range(args.epochs):
         textio.cprint('==epoch: %d, learning rate: %f=='%(epoch, opt.param_groups[0]['lr']))
-        train_loss = train_one_epoch(args, net, train_loader, opt)
+        train_loss = train_one_epoch(args, net, train_loader, opt, boardio)
         textio.cprint('mean train EPE loss: %f'%train_loss)
 
         test_loss, epe, acc, acc_2 = test_one_epoch(args, net, test_loader)
@@ -159,9 +167,13 @@ def train(args, net, train_loader, test_loader, boardio, textio):
             best_test_loss = test_loss
             textio.cprint('best test loss till now: %f'%test_loss)
             if torch.cuda.device_count() > 1:
-                torch.save(net.module.state_dict(), 'checkpoints/%s/models/model.best.t7' % args.exp_name)
+                # torch.save(net.module.state_dict(), 'checkpoints/%s/models/model.best.t7' % args.exp_name)
+                # torch.save(net.module.state_dict(), 'checkpoints/%s/models/model.best.t7' % args.exp_name)
+                torch.save(net.module.state_dict(), 'models/%s/model.tar' % timestr)
             else:
-                torch.save(net.state_dict(), 'checkpoints/%s/models/model.best.t7' % args.exp_name)
+                # torch.save(net.state_dict(), 'checkpoints/%s/models/model.best.t7' % args.exp_name)
+                # torch.save(net.state_dict(), 'checkpoints/%s/models/model.best.t7' % args.exp_name)
+                torch.save(net.state_dict(), 'models/%s/model.tar' % timestr)
         
         scheduler.step()
         # if torch.cuda.device_count() > 1:
@@ -224,8 +236,8 @@ def main():
     torch.cuda.manual_seed_all(args.seed)
     np.random.seed(args.seed)
 
-    # boardio = SummaryWriter(log_dir='checkpoints/' + args.exp_name)
-    boardio = []
+    boardio = SummaryWriter(log_dir='checkpoints/' + args.exp_name)
+    #boardio = []
     _init_(args)
 
     textio = IOStream('checkpoints/' + args.exp_name + '/run.log')
@@ -251,6 +263,8 @@ def main():
         raise Exception("not implemented")
 
     if args.model == 'flownet':
+        # net = FlowNet3D(args)
+        print(args)
         net = FlowNet3D(args).cuda()
         net.apply(weights_init)
         if args.eval:
@@ -275,7 +289,7 @@ def main():
 
 
     print('FINISH')
-    # boardio.close()
+    boardio.close()
 
 
 if __name__ == '__main__':
