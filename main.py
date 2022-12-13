@@ -19,6 +19,8 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 import time
+import os.path
+import pathlib as Path
 
 
 class IOStream:
@@ -102,10 +104,12 @@ def test_one_epoch(args, net, test_loader):
     return total_loss * 1.0 / num_examples, total_epe * 1.0 / num_examples, total_acc3d * 1.0 / num_examples, total_acc3d_2 * 1.0 / num_examples
 
 
-def train_one_epoch(args, net, train_loader, opt, boardio):
+def train_one_epoch(args, net, train_loader, opt, boardio, epoch_count, timestr):
     net.train()
     num_examples = 0
     total_loss = 0
+    mean_loss_list = []
+
     for i, data in tqdm(enumerate(train_loader), total = len(train_loader)):
         pc1, pc2, color1, color2, flow, mask1 = data
         pc1 = pc1.cuda().transpose(2,1).contiguous()
@@ -126,11 +130,17 @@ def train_one_epoch(args, net, train_loader, opt, boardio):
         total_loss += loss.item() * batch_size
 
         # mean_loss = 0
-        if (i+1) % 100 == 0:
-            mean_loss= total_loss / 100 / batch_size
+        save_count = 100
+        if (i+1) % save_count == 0:
+            mean_loss= total_loss / save_count / batch_size
             print("batch: %d, mean loss: %f" % (i, mean_loss))
             total_loss = 0
             boardio.add_scalar("mean loss/iter", mean_loss, i)
+            iteration_num = epoch_count * 1250 + i
+            mean_loss_list.append(tuple((iteration_num, mean_loss)))
+
+    f = np.load('models/%s/mean_loss.npy' % timestr) if os.path.isfile('models/%s/mean_loss.npy' % timestr) else []
+    np.save('models/%s/mean_loss.npy' % timestr, np.append(f, mean_loss_list))
 
     return total_loss * 1.0 / num_examples
 
@@ -156,9 +166,15 @@ def train(args, net, train_loader, test_loader, boardio, textio):
     scheduler = StepLR(opt, 10, gamma = 0.7)
 
     best_test_loss = np.inf
+    # iteration_list = []
+    # train_loss_list = []
+    # test_loss_list = []
+    # epe_list = []
+    # acc_list = []
+    # acc_2_list = []
     for epoch in range(args.epochs):
         textio.cprint('==epoch: %d, learning rate: %f=='%(epoch, opt.param_groups[0]['lr']))
-        train_loss = train_one_epoch(args, net, train_loader, opt, boardio)
+        train_loss = train_one_epoch(args, net, train_loader, opt, boardio, epoch, timestr)
         textio.cprint('mean train EPE loss: %f'%train_loss)
 
         test_loss, epe, acc, acc_2 = test_one_epoch(args, net, test_loader)
@@ -285,6 +301,7 @@ def main():
     if args.eval:
         test(args, net, test_loader, boardio, textio)
     else:
+        # optimizer = torch.optim.Adam()
         train(args, net, train_loader, test_loader, boardio, textio)
 
 
